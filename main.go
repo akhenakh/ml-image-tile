@@ -91,7 +91,7 @@ func main() {
 				}
 				level.Debug(logger).Log("msg", "processing", "path", path)
 
-				err := processImageBimg(path, *dest, *resize, *x, *y)
+				err := processImageBimg(logger, path, *dest, *resize, *x, *y)
 				if err != nil {
 					level.Error(logger).Log("msg", "error processing", "path", path, "err", err)
 					continue
@@ -101,36 +101,13 @@ func main() {
 			wg.Done()
 		}
 
-		jobs := make(chan string, *workerCount)
-
 		for w := 0; w < *workerCount; w++ {
 			wg.Add(1)
 
-			go worker(jobs)
+			go worker(queue)
 		}
 
-		go func() {
-			for {
-				select {
-				case path, ok := <-queue:
-					if !ok {
-						level.Info(logger).Log("msg", "last job sent")
-
-						return
-					}
-					level.Debug(logger).Log("msg", "received from queue, sending to worker", "path", path)
-					jobs <- path
-
-				case <-ctx.Done():
-
-					return
-				}
-			}
-		}()
-
 		wg.Wait()
-
-		close(jobs)
 
 		return fmt.Errorf("finished work")
 	})
@@ -142,14 +119,15 @@ func main() {
 				return err
 			}
 
-			level.Debug(logger).Log("msg", "queuing", "path", path)
 			if !info.IsDir() {
+				level.Debug(logger).Log("msg", "queuing", "path", path)
 				queue <- path
 			}
 
 			return nil
 		})
 
+		close(queue)
 		return err
 	})
 
