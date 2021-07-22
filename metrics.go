@@ -11,6 +11,7 @@ var (
 	fileCounter uint64 = 0
 	tileCounter uint64 = 0
 
+	//nolint deadcode
 	fileCounterP = promauto.NewCounterFunc(
 		prometheus.CounterOpts{
 			Name: "file_counter",
@@ -20,6 +21,7 @@ var (
 			return float64(atomic.LoadUint64(&fileCounter))
 		})
 
+	//nolint deadcode
 	tileCounterP = promauto.NewCounterFunc(
 		prometheus.CounterOpts{
 			Name: "tile_counter",

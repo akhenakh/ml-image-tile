@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -25,10 +26,10 @@ var (
 
 	source = flag.String("source", "", "Source directory for the images")
 	dest   = flag.String("dest", "", "Destination directory for the images")
-	x      = flag.Int("x", 224, "Size of the target tiles x")
-	y      = flag.Int("y", 224, "Size of the target tiles y")
+	width  = flag.Int("width", 224, "Size of the target tiles x")
+	height = flag.Int("height", 224, "Size of the target tiles y")
 
-	resize      = flag.Int("resize", 0, "Resize percentage before tilling")
+	resize      = flag.Int("resize", 2, "Divide size tilling")
 	workerCount = flag.Int("workerCount", 4, "Parallel worker count")
 
 	logLevel        = flag.String("logLevel", "INFO", "DEBUG|INFO|WARN|ERROR")
@@ -91,12 +92,14 @@ func main() {
 				}
 				level.Debug(logger).Log("msg", "processing", "path", path)
 
-				err := processImageBimg(logger, path, *dest, *resize, *x, *y)
+				err := processImageBimg(logger, path, *dest, *resize, *width, *height)
 				if err != nil {
 					level.Error(logger).Log("msg", "error processing", "path", path, "err", err)
 					continue
 				}
+				atomic.AddUint64(&fileCounter, 1)
 			}
+
 			level.Debug(logger).Log("msg", "stopping worker")
 			wg.Done()
 		}
@@ -122,6 +125,7 @@ func main() {
 			if !info.IsDir() {
 				level.Debug(logger).Log("msg", "queuing", "path", path)
 				queue <- path
+				atomic.AddUint64(&fileCounter, 1)
 			}
 
 			return nil
@@ -150,6 +154,12 @@ func main() {
 	}
 
 	err := g.Wait()
+
+	level.Info(logger).Log(
+		"fileCounter", atomic.LoadUint64(&fileCounter),
+		"tileCounter", atomic.LoadUint64(&tileCounter),
+	)
+
 	if err != nil {
 		level.Error(logger).Log("msg", "stopping", "error", err)
 		os.Exit(2)
