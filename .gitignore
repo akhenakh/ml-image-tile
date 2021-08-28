@@ -13,5 +13,6 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
-ml-image-tile
+cmd/ml-image-tile/ml-image-tile
 fakedir/
+cmd/detect-blurry/detect-blurry
